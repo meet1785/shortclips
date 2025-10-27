@@ -10,8 +10,41 @@ from pydantic import BaseModel, HttpUrl
 from typing import Optional, List
 import os
 import uvicorn
+from pathlib import Path
 from orchestrator import ClipOrchestrator
 from config import settings
+
+
+def safe_join_path(base_dir: str, filename: str) -> str:
+    """
+    Safely join paths and prevent directory traversal attacks.
+    
+    Args:
+        base_dir: Base directory path
+        filename: Filename to join
+        
+    Returns:
+        Safe joined path
+        
+    Raises:
+        HTTPException: If path traversal is detected
+    """
+    # Resolve the base directory to absolute path
+    base = Path(base_dir).resolve()
+    
+    # Remove any path components and use only the filename
+    safe_filename = os.path.basename(filename)
+    
+    # Join and resolve the full path
+    full_path = (base / safe_filename).resolve()
+    
+    # Ensure the resolved path is within the base directory
+    try:
+        full_path.relative_to(base)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid file path")
+    
+    return str(full_path)
 
 
 # Initialize FastAPI app
@@ -208,15 +241,20 @@ async def download_clip(clip_name: str):
     Returns:
         Video file
     """
-    clip_path = os.path.join(settings.outputs_dir, clip_name)
+    # Use safe path joining to prevent directory traversal
+    clip_path = safe_join_path(settings.outputs_dir, clip_name)
     
     if not os.path.exists(clip_path):
         raise HTTPException(status_code=404, detail="Clip not found")
     
+    # Ensure it's a file and has correct extension
+    if not os.path.isfile(clip_path) or not clip_name.endswith('.mp4'):
+        raise HTTPException(status_code=400, detail="Invalid clip file")
+    
     return FileResponse(
         clip_path,
         media_type="video/mp4",
-        filename=clip_name
+        filename=os.path.basename(clip_path)
     )
 
 
@@ -231,15 +269,20 @@ async def download_thumbnail(thumbnail_name: str):
     Returns:
         Image file
     """
-    thumbnail_path = os.path.join(settings.outputs_dir, thumbnail_name)
+    # Use safe path joining to prevent directory traversal
+    thumbnail_path = safe_join_path(settings.outputs_dir, thumbnail_name)
     
     if not os.path.exists(thumbnail_path):
         raise HTTPException(status_code=404, detail="Thumbnail not found")
     
+    # Ensure it's a file and has correct extension
+    if not os.path.isfile(thumbnail_path) or not thumbnail_name.endswith('.jpg'):
+        raise HTTPException(status_code=400, detail="Invalid thumbnail file")
+    
     return FileResponse(
         thumbnail_path,
         media_type="image/jpeg",
-        filename=thumbnail_name
+        filename=os.path.basename(thumbnail_path)
     )
 
 
@@ -254,15 +297,20 @@ async def delete_clip(clip_name: str):
     Returns:
         Success message
     """
-    clip_path = os.path.join(settings.outputs_dir, clip_name)
+    # Use safe path joining to prevent directory traversal
+    clip_path = safe_join_path(settings.outputs_dir, clip_name)
     
-    if os.path.exists(clip_path):
+    # Ensure it's a valid MP4 file
+    if not clip_name.endswith('.mp4'):
+        raise HTTPException(status_code=400, detail="Invalid clip name")
+    
+    if os.path.exists(clip_path) and os.path.isfile(clip_path):
         os.remove(clip_path)
         
         # Also remove thumbnail
         thumbnail_name = clip_name.replace(".mp4", "_thumb.jpg")
-        thumbnail_path = os.path.join(settings.outputs_dir, thumbnail_name)
-        if os.path.exists(thumbnail_path):
+        thumbnail_path = safe_join_path(settings.outputs_dir, thumbnail_name)
+        if os.path.exists(thumbnail_path) and os.path.isfile(thumbnail_path):
             os.remove(thumbnail_path)
         
         return {"message": "Clip deleted successfully"}
