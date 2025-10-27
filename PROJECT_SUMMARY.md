@@ -121,10 +121,14 @@ shortclips/
 - Docker deployment
 
 ### 4. Zero Paid APIs
-- Gemini Pro: Free tier (60 requests/minute)
-- Freesound: Free tier (unlimited)
+- Gemini Pro: Free tier (60 requests/minute as of Oct 2024, verify current limits)
+- Freesound: Free tier (unlimited as of Oct 2024, verify current limits)
 - Whisper: Open-source, runs locally
 - All processing: Local, no cloud costs
+
+**Note:** API quotas may change over time. Check current free tier limits at:
+- Gemini Pro: https://ai.google.dev/pricing
+- Freesound: https://freesound.org/help/developers/
 
 ## Usage Examples
 
@@ -167,10 +171,23 @@ Each clip includes:
 
 ## Performance
 
-### Processing Time
+### Processing Time (Typical)
+Processing times vary based on hardware. Estimates below are for:
+- CPU: 4-core modern processor (e.g., Intel i5/i7, AMD Ryzen)
+- RAM: 8GB
+- Whisper model: base (default)
+
+Typical processing times:
 - 5-min video → 3-5 minutes
 - 15-min video → 10-15 minutes
 - 30-min video → 20-30 minutes
+
+**Note:** Times can be faster with:
+- More CPU cores
+- GPU acceleration (CUDA for Whisper)
+- Smaller Whisper model (tiny)
+- SSD storage
+- Disabled effects (no zoom, no music)
 
 ### Resource Requirements
 - **CPU**: Multi-core recommended
